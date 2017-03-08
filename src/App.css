@@ -7,13 +7,13 @@
   background-color: #222;
   padding: 20px;
   color: white;
-  height: 25%;
+  height: 5vh;
 }
 .App-content {
   display: flex;
   flex-direction: row;
   font-size: large;
-  height: 75%;
+  height: 90%;
 }
 .App-instructions {
   font-size: large;
@@ -35,52 +35,31 @@
   border-left: solid;
   border-width: 1px;
 }
-.private-pem-target {
+.audit-target:hover {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   flex: 1;
-  border: solid;
-  border-width: 1px;
-  border-radius: 3px;
+  border: dashed;
+  border-width: 3px;
+  border-radius: 15px;
   margin: 5px;
+  background-color: #dadada; 
 }
-.unsigned-audit-target {
+.audit-target {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   flex: 1;
-  border: solid;
-  border-width: 1px;
-  border-radius: 3px;
-  margin: 5px;
-}
-.public-pub-target {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  flex: 1;
-  border: solid;
-  border-width: 1px;
-  border-radius: 3px;
-  margin: 5px;
-}
-.signed-audit-target {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  flex: 1;
-  border: solid;
-  border-width: 1px;
-  border-radius: 3px;
+  border: dashed;
+  border-width: 3px;
+  border-radius: 15px;
   margin: 5px;
 }
 .sign-audit-button {
-  height: 25%;
+  height: 10%;
   font-size: xx-large;
   margin: 5px;
 }
