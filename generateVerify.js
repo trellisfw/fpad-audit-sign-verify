@@ -11,16 +11,17 @@ module.exports = {
   verify: verify,
 }
 
-function contentModified(audit, sJWT) {
+function contentModified(audit) {
+  var sJWT = audit.signatures[audit.signatures.length-1]
   // Decode the content and validate it against the content reconstructed with the public key.
   var decoded = KJUR.jws.JWS.readSafeJSONString(KJUR.b64utoutf8(sJWT.split(".")[1]));
   if (audit.signatures.length === 1) {
     delete audit.signatures;
   } else audit.signatures.pop();
-  var reconstructedAudit = self.serialize(audit);
+  var reconstructedAudit = serialize(audit);
   reconstructedAudit = sha256(reconstructedAudit);
-  if (decoded.hash === reconstructedAudit) return true;
-  return false;
+  if (decoded.hash === reconstructedAudit) return false
+  return true
 }
 
 function isValid(sJWT, header) {
@@ -31,12 +32,13 @@ function isValid(sJWT, header) {
   if (header.iss) header.iss = [header.iss]
   if (header.sub) header.sub = [header.sub]
   if (header.aud) header.aud = [header.aud]
+  if (header.kty) header.kty = [header.kty]
   return KJUR.jws.JWS.verifyJWT(sJWT, pubKey, header); // Verify the JWT
 }
 
 
-function verify(audit, publicKey, signedAudit) {
-  agent('GET', 'https://raw.githubusercontent.com/fpad/trusted-list/master/keys.json')
+function verify(audit) {
+  return agent('GET', 'https://raw.githubusercontent.com/fpad/trusted-list/master/keys.json')
   .end()
   .then(function onResult(res) {
     var trusted = JSON.parse(res.text);
@@ -52,7 +54,7 @@ function verify(audit, publicKey, signedAudit) {
     // Handle embedded JKU
     } else if (header.jku && header.kid) {
       if (!trusted[header.jku]) return false; // Its not on the trusted list. Don't trust!
-      agent('GET', header.jku) //Get the JWK from the JKU and verify the JWT
+      return agent('GET', header.jku) //Get the JWK from the JKU and verify the JWT
       .end()
       .then(function onResult(jkuRes) {   
         var keySet = JSON.parse(jkuRes.text);
@@ -69,13 +71,16 @@ function verify(audit, publicKey, signedAudit) {
         if (contentModified(audit)) throw 'Audit modified';
         return true
       }, function onError(err) {
+        throw err;
       });
     }
-  }, function onError(err) {
+  }, function onError(error) {
+        throw error;
   });
 }
 
-function generate(inputAudit, kid, alg, kty, typ, jwk, jku) {
+function generate(inputAudit, kid, alg, kty, typ, prvJwk, pubJwk, jku) {
+  if (!prvJwk) throw 'private key required';
   var data = inputAudit;                                                         
   if (serialize) var data = serialize(data);                                                  
   data = sha256(data);                                                           
@@ -88,12 +93,12 @@ function generate(inputAudit, kid, alg, kty, typ, jwk, jku) {
     iat: Math.floor(Date.now() / 1000),                                          
     kty: kty,                                                                    
   };                                                                             
-  if (jwk) {
-    oHeader.jwk = jwk;
+  if (pubJwk) {
+    oHeader.jwk = pubJwk;
   } else if (jku) {
     oHeader.jku = jku;
   }
-  var prvKey = KJUR.KEYUTIL.getKey(jwk)                               
+  var prvKey = KJUR.KEYUTIL.getKey(prvJwk)
   var assertion = KJUR.jws.JWS.sign(alg, JSON.stringify(oHeader), data, prvKey); 
 
   if (inputAudit.signatures) {                                                   
@@ -101,7 +106,6 @@ function generate(inputAudit, kid, alg, kty, typ, jwk, jku) {
   } else {                                                                       
     inputAudit.signatures = [assertion];                                         
   }                                                                              
-  
   return inputAudit;
 }
 

@@ -105,14 +105,24 @@ class App extends Component {
 
   verifyAuditButtonClicked() {
     if (this.state.signedAudit) { //Audit file present.
-      var status = gv.verify(this.state.signedAudit, )
-      console.log(status);
+      gv.verify(this.state.signedAudit)
+      .then(function(res) {
+        console.log(res)
+      })
+      .catch((err) => {
+        console.log(err);
+      })
     }
   }
 
   signAuditButtonClicked(evt) {
     console.log(this.state)
     if (this.state.inputAudit) { //Audit file present.
+      var pubJwk = {
+        kty: 'RSA',
+        n: 'nrNguIQlBwNqNkKO1h0BhePImG_SXMknYaDC_ltwjHpdt139t1J2nkMLDKrqRcF2vlTG61dRYrYgPW55G8oU3Uuf4J0p2Lf5u6ZRvdSw1ep5gfLwWGWy22F-hx1DAKf3E6keTIBfcNejihEPQv9H9Fzy1-GJUzMYfrPi9E2kiaOTuFzGLkOKX5qnVBZZGYube4soOV6c18uz83UFBDs_3sYp89GrakH5jvwMHqV4e1qBv6p2BCXPoVYW6rUJjAAyQM9wN2h8jfkZtYTtV6KGeTj4EaAHr2fQacZFN77IIzRTL8flRLgDKns3QMdrbky43bvCRvjd_4rKCJ9onbDixw',
+        e: 'AQAB'
+      }
       var prvJwk = { 
         kty: 'RSA',
         n: 'nrNguIQlBwNqNkKO1h0BhePImG_SXMknYaDC_ltwjHpdt139t1J2nkMLDKrqRcF2vlTG61dRYrYgPW55G8oU3Uuf4J0p2Lf5u6ZRvdSw1ep5gfLwWGWy22F-hx1DAKf3E6keTIBfcNejihEPQv9H9Fzy1-GJUzMYfrPi9E2kiaOTuFzGLkOKX5qnVBZZGYube4soOV6c18uz83UFBDs_3sYp89GrakH5jvwMHqV4e1qBv6p2BCXPoVYW6rUJjAAyQM9wN2h8jfkZtYTtV6KGeTj4EaAHr2fQacZFN77IIzRTL8flRLgDKns3QMdrbky43bvCRvjd_4rKCJ9onbDixw',
@@ -129,7 +139,7 @@ class App extends Component {
       var kty = 'RSA'
       var typ = 'JWT'
 //      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/jku-test.json'
-      var signedAudit = gv.generate(this.state.inputAudit, kid, alg, kty, typ, prvJwk, null)
+      var signedAudit = gv.generate(this.state.inputAudit, kid, alg, kty, typ, prvJwk, pubJwk, null)
       fd(JSON.stringify(signedAudit), 'signedAudit.json')
     }
   }
