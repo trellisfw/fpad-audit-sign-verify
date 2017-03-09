@@ -4,8 +4,16 @@ import FileDrop from 'react-file-drop';
 import _ from 'lodash';
 import fd from 'react-file-download'
 import gv from '../generateVerify'
+var Promise = require('bluebird').Promise; 
+var agent = require('superagent-promise')(require('superagent'), Promise);
 
 class App extends Component {
+
+  componentWillMount() {
+    this.setState({verifyStatus:null});
+  }
+
+
 //TODO: use eval to handle plain module.exports file
   handleFile(filelist, e, stateKey, fileExtension) {
     var reader = new FileReader();
@@ -13,10 +21,8 @@ class App extends Component {
     if (!file) return false;
     if (file.name.substring(file.name.length-3, file.name.length) === fileExtension) {
       reader.onload = (upload) => {
-        console.log(upload.target.result);
         var obj = {};
         obj[stateKey] = upload.target.result.split('\n')[1];
-        console.log(obj);
         this.setState(obj);
       }
       reader.readAsText(file);
@@ -45,69 +51,42 @@ class App extends Component {
     },"")
     + endtoken;
   }
-/*
-  pubFileDropped(filelist, e){
-    console.log('dropped into pub file drop target')
-    var reader = new FileReader();
-    var file = filelist[0];
-    if (!file) return false;
-    if (file.name.substring(file.name.length-3, file.name.length) === 'pub') {
-
-      reader.onload = (upload) => {
-        this.setState({pubFile:upload.target.result});
-      }
-      reader.readAsText(file);
-    }
-  }
-
-  pemFileDropped(filelist, e) {
-    console.log('dropped into pem file drop target')
-    var reader = new FileReader();
-    var file = filelist[0];
-    if (!file) return false;
-    if (file.name.substring(file.name.length-3, file.name.length) === 'pem') {
-
-      reader.onload = (upload) => {
-        this.setState({pemFile:upload.target.result});
-      }
-      reader.readAsText(file);
-    }
-  }
-*/
 
   unsignedAuditDropped(filelist, e) {
-    console.log('dropped into unsigned audit drop target')
     var reader = new FileReader();
     var file = filelist[0];
     if (!file) return false;
     if (file.name.substring(file.name.length-4, file.name.length) === 'json') {
 
       reader.onload = (upload) => {
-        this.setState({inputAudit: JSON.parse(upload.target.result)});
+        this.setState({inputAudit: {filename: name, audit:JSON.parse(upload.target.result)}});
+        this.signAudit();
       }
       reader.readAsText(file);
     }
   }
 
   signedAuditDropped(filelist, e) {
-    console.log('dropped into signed audit drop target')
     var reader = new FileReader();
     var file = filelist[0];
     if (!file) return false;
     if (file.name.substring(file.name.length-4, file.name.length) === 'json') {
 
       reader.onload = (upload) => {
-        this.setState({signedAudit: JSON.parse(upload.target.result)});
+        this.setState({signedAudit: {filename: name, audit: JSON.parse(upload.target.result)}});
+        this.verifyAudit();
       }
       reader.readAsText(file);
     }
   }
 
-  verifyAuditButtonClicked() {
+  verifyAudit() {
+    var self = this;
     if (this.state.signedAudit) { //Audit file present.
-      gv.verify(this.state.signedAudit)
+      gv.verify(this.state.signedAudit.audit)
       .then(function(res) {
-        console.log(res)
+        console.log(res);
+        self.setState({verifyStatus:res})
       })
       .catch((err) => {
         console.log(err);
@@ -115,8 +94,7 @@ class App extends Component {
     }
   }
 
-  signAuditButtonClicked(evt) {
-    console.log(this.state)
+  signAudit() {
     if (this.state.inputAudit) { //Audit file present.
       var pubJwk = {
         kty: 'RSA',
@@ -139,17 +117,36 @@ class App extends Component {
       var kty = 'RSA'
       var typ = 'JWT'
 //      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/jku-test.json'
-      var signedAudit = gv.generate(this.state.inputAudit, kid, alg, kty, typ, prvJwk, pubJwk, null)
+      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, pubJwk, null)
       fd(JSON.stringify(signedAudit), 'signedAudit.json')
     }
   }
 
+  getSampleAudit(evt) {
+    var sampleAuditUrl = 'https://raw.githubusercontent.com/fpad/fpad-audit-sign-verify/master/unsignedAudit.json'
+    return agent('GET', sampleAuditUrl)
+    .end()
+    .then(function onResult(res) {
+      fd(res.text, 'samplePgfsAudit.json')
+    })
+  }
+
   render() {
 
+    var auditTarget;
+    var verifyState = this.state.verifyStatus;
+    if (verifyState === null) {
+      auditTarget = "audit-target"
+    } else if (verifyState === true) {
+      auditTarget = "audit-valid"
+    } else if (verifyState === false) {
+      auditTarget = "audit-invalid"
+    }
     return (
       <div className="App">
         <div className="App-header">
           <h2>FPAD Audit Signature Generation and Verification</h2>
+          <h3>Need a sample audit? <a onClick={(evt) => {this.getSampleAudit(evt)}}>Download Here</a></h3>
          <div className="App-instructions">
          </div>
 
@@ -164,15 +161,10 @@ class App extends Component {
                 onDrop={(evt) => {this.unsignedAuditDropped(evt)}}
               />
             </div>
-            <button
-              className='sign-audit-button'
-              onClick={(evt)=> {this.signAuditButtonClicked(evt)}}>
-              Generate Signed Audit
-            </button>
           </div>
           <div className="App-verify">
             <h3>Verify a signed audit</h3>
-            <div className="audit-target">
+            <div className={auditTarget}>
               Drag a signed audit here!
               <FileDrop 
                 className='signed-targ'
@@ -180,11 +172,6 @@ class App extends Component {
                 onDrop={(evt) => {this.signedAuditDropped(evt)}}
               />
             </div>
-            <button
-              className='sign-audit-button'
-              onClick={(evt)=> {this.verifyAuditButtonClicked(evt)}}>
-              Verify Signed Audit
-            </button>
           </div>
         </div>
       </div>

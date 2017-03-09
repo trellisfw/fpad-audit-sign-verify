@@ -7,7 +7,7 @@
   background-color: #222;
   padding: 20px;
   color: white;
-  height: 5vh;
+  height: 10vh;
 }
 .App-content {
   display: flex;
@@ -34,6 +34,34 @@
   font-size: large;
   border-left: solid;
   border-width: 1px;
+}
+a {
+  text-decoration: underline;
+  cursor: pointer;
+}
+.audit-valid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  border: dashed;
+  border-width: 3px;
+  border-radius: 15px;
+  margin: 5px;
+  background-color: #00FF00; 
+}
+.audit-invalid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  border: dashed;
+  border-width: 3px;
+  border-radius: 15px;
+  margin: 5px;
+  background-color: #FF0000; 
 }
 .audit-target:hover {
   display: flex;

@@ -3,7 +3,7 @@ var sha256 = require('js-sha256');
 var fs = require('fs');
 var KJUR = require('jsrsasign');
 const _ = require('lodash');
-var Promsise = require('bluebird').Promise; 
+var Promise = require('bluebird').Promise; 
 var agent = require('superagent-promise')(require('superagent'), Promise);
 
 module.exports = {
@@ -61,7 +61,7 @@ function verify(audit) {
         console.log(keySet);
         console.log(header);
         var jwk;
-        keySet.keys.forEach((key) => {
+        keySet.keys.forEach(function(key) {
           if (key.kid === header.kid) {
             jwk = key
           }
@@ -124,7 +124,7 @@ function serialize(obj) {
   const keys = _.keys(obj).sort(); // you can't have two identical keys, so you don't have to worry about that.
 
   return starttoken
-    + _.reduce(keys, (acc,k,index) => {
+    + _.reduce(keys, function(acc,k,index) {
       if (!isarray) acc += '"'+k+'":'; // if an object, put the key name here
       acc += serialize(obj[k]);
       if (index < keys.length-1) acc += ',';
