@@ -11,7 +11,7 @@ module.exports = {
   verify: verify,
 }
 
-function contentModified(audit) {
+function isContentModified(audit) {
   var sJWT = audit.signatures[audit.signatures.length-1]
   // Decode the content and validate it against the content reconstructed with the public key.
   var decoded = KJUR.jws.JWS.readSafeJSONString(KJUR.b64utoutf8(sJWT.split(".")[1]));
@@ -24,8 +24,8 @@ function contentModified(audit) {
   return true
 }
 
-function isValid(sJWT, header) {
-  var pubKey = KJUR.KEYUTIL.getKey(header.jwk);
+function isValid(sJWT, header, jwk) {
+  var pubKey = KJUR.KEYUTIL.getKey(jwk);
 //TODO: I don't understand why KJUR wants alg to be an array, but generating the JWT with alg as an array fails. Perhaps I wasn't generating it correctly
   if (header.alg) header.alg = [header.alg]
   if (header.typ) header.typ = [header.typ]
@@ -45,43 +45,43 @@ function verify(audit) {
     var sJWT = audit.signatures[audit.signatures.length-1]
     var header = KJUR.jws.JWS.readSafeJSONString(KJUR.b64utoutf8(sJWT.split(".")[0]));
     // Handle JWK
+    if (!header) throw  'Malformed signature (it was likely modified).';
     if (header.jwk) {
-      if (!header.jwk.n) throw 'JWK missing hash' ; // For some reason, no hash of the key was included. Can't check. Don't trust!
-      if (!trusted[header.jwk.n]) throw 'Signer JWK not on trusted list'; // Its not on the trusted list. Don't trust!
-      if (!isValid(sJWT, header)) throw 'JWT invalid';
-      if (contentModified(audit)) throw 'Audit modified';
+      if (!header.jwk.n) throw 'Signature JWK was missing its hash.' ; // For some reason, no hash of the key was included. Can't check. Don't trust!
+      if (!isValid(sJWT, header, header.jwk)) throw 'Audit signature is invalid.';
+      if (!trusted[header.jwk.n]) throw 'Audit signature is valid. The signer is not on the trusted list.'; // Its not on the trusted list. Don't trust!
+      if (isContentModified(audit)) throw 'Audit signature is valid. Signer is trusted. The Audit contents have been modified.';
       return true
     // Handle embedded JKU
     } else if (header.jku && header.kid) {
-      if (!trusted[header.jku]) return false; // Its not on the trusted list. Don't trust!
       return agent('GET', header.jku) //Get the JWK from the JKU and verify the JWT
       .end()
       .then(function onResult(jkuRes) {   
         var keySet = JSON.parse(jkuRes.text);
-        console.log(keySet);
-        console.log(header);
         var jwk;
         keySet.keys.forEach(function(key) {
           if (key.kid === header.kid) {
             jwk = key
           }
         })
-        if (!jwk) throw 'Signer JWK not on trusted list';
-        if (!isValid(sJWT, header)) throw 'JWT invalid';
-        if (contentModified(audit)) throw 'Audit modified';
-        return true
+        if (!jwk) throw 'Could not find the specified key at the given URL.';
+        if (!isValid(sJWT, header, jwk)) throw 'Audit signature is invalid.';
+        if (!trusted[header.jku]) throw 'Audit signature is valid. The signer is not on the trusted list.'; // Its not on the trusted list. Don't trust!
+        if (isContentModified(audit)) throw 'Audit signature is valid. Signer is trusted. The Audit contents have been modified.';
+        return true;
       }, function onError(err) {
         throw err;
       });
     }
+    return false;
   }, function onError(error) {
-        throw error;
+    throw error;
   });
 }
 
 function generate(inputAudit, kid, alg, kty, typ, prvJwk, pubJwk, jku) {
   if (!prvJwk) throw 'private key required';
-  var data = inputAudit;                                                         
+  var data = inputAudit;
   if (serialize) var data = serialize(data);                                                  
   data = sha256(data);                                                           
   data = { hash: data };                                                         

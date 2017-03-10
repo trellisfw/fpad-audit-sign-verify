@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
-import './App.css';
-import FileDrop from 'react-file-drop';
+import React, { Component } from 'react'
+import './App.css'
+import Dropzone from 'react-dropzone'
 import _ from 'lodash';
 import fd from 'react-file-download'
 import gv from '../generateVerify'
@@ -11,22 +11,6 @@ class App extends Component {
 
   componentWillMount() {
     this.setState({verifyStatus:null});
-  }
-
-
-//TODO: use eval to handle plain module.exports file
-  handleFile(filelist, e, stateKey, fileExtension) {
-    var reader = new FileReader();
-    var file = filelist[0];
-    if (!file) return false;
-    if (file.name.substring(file.name.length-3, file.name.length) === fileExtension) {
-      reader.onload = (upload) => {
-        var obj = {};
-        obj[stateKey] = upload.target.result.split('\n')[1];
-        this.setState(obj);
-      }
-      reader.readAsText(file);
-    }
   }
 
   serialize(obj) {
@@ -56,28 +40,58 @@ class App extends Component {
     var reader = new FileReader();
     var file = filelist[0];
     if (!file) return false;
-    if (file.name.substring(file.name.length-4, file.name.length) === 'json') {
-
-      reader.onload = (upload) => {
-        this.setState({inputAudit: {filename: name, audit:JSON.parse(upload.target.result)}});
-        this.signAudit();
+    reader.onload = (upload) => {
+      let data = null;
+      try { data = JSON.parse(upload.target.result)} 
+      catch(err) {
+        this.setState({signedAudit: {filename: file.name, audit: data}});
+        this.setError('File is not parsable JSON.')
       }
-      reader.readAsText(file);
+      if (!data) {
+        this.setState({signedAudit: {filename: file.name, audit: data}});
+        this.setError('File is not parsable JSON.')
+      }
+      this.setState({inputAudit: {filename: file.name, audit:JSON.parse(upload.target.result)}});
+      this.signAudit();
     }
+    reader.readAsText(file);
+  }
+
+  setError(message) {
+    var self = this;
+    this.setState({verifyStatus:false})
+    this.setState({error: message})
+    setTimeout(() => { 
+      self.setState({verifyStatus:null})
+    }, 10000);
   }
 
   signedAuditDropped(filelist, e) {
     var reader = new FileReader();
     var file = filelist[0];
     if (!file) return false;
-    if (file.name.substring(file.name.length-4, file.name.length) === 'json') {
 
-      reader.onload = (upload) => {
-        this.setState({signedAudit: {filename: name, audit: JSON.parse(upload.target.result)}});
-        this.verifyAudit();
+    reader.onload = (upload) => {
+      let data = null;
+      try { data = JSON.parse(upload.target.result)} 
+      catch(err) {
+        this.setState({signedAudit: {filename: file.name, audit: data}});
+        this.setError('File is not parsable JSON.')
       }
-      reader.readAsText(file);
+      if (!data) {
+        this.setState({signedAudit: {filename: file.name, audit: null}});
+        this.setError('File is not parsable JSON.');
+      } else {
+        if (data.signatures) {
+          this.setState({signedAudit: {filename: file.name, audit: data}});
+          this.verifyAudit();
+        } else {
+          this.setState({signedAudit: {filename: file.name, audit: null}});
+          this.setError('Audit has no signatures.')
+        }
+      }
     }
+    reader.readAsText(file);
   }
 
   verifyAudit() {
@@ -85,11 +99,14 @@ class App extends Component {
     if (this.state.signedAudit) { //Audit file present.
       gv.verify(this.state.signedAudit.audit)
       .then(function(res) {
-        console.log(res);
         self.setState({verifyStatus:res})
+        setTimeout(() => { 
+          self.setState({verifyStatus:null})
+        }, 10000);
       })
       .catch((err) => {
-        console.log(err);
+        self.setState({verifyStatus:false})
+        this.setState({error: err})
       })
     }
   }
@@ -101,6 +118,7 @@ class App extends Component {
         n: 'nrNguIQlBwNqNkKO1h0BhePImG_SXMknYaDC_ltwjHpdt139t1J2nkMLDKrqRcF2vlTG61dRYrYgPW55G8oU3Uuf4J0p2Lf5u6ZRvdSw1ep5gfLwWGWy22F-hx1DAKf3E6keTIBfcNejihEPQv9H9Fzy1-GJUzMYfrPi9E2kiaOTuFzGLkOKX5qnVBZZGYube4soOV6c18uz83UFBDs_3sYp89GrakH5jvwMHqV4e1qBv6p2BCXPoVYW6rUJjAAyQM9wN2h8jfkZtYTtV6KGeTj4EaAHr2fQacZFN77IIzRTL8flRLgDKns3QMdrbky43bvCRvjd_4rKCJ9onbDixw',
         e: 'AQAB'
       }
+
       var prvJwk = { 
         kty: 'RSA',
         n: 'nrNguIQlBwNqNkKO1h0BhePImG_SXMknYaDC_ltwjHpdt139t1J2nkMLDKrqRcF2vlTG61dRYrYgPW55G8oU3Uuf4J0p2Lf5u6ZRvdSw1ep5gfLwWGWy22F-hx1DAKf3E6keTIBfcNejihEPQv9H9Fzy1-GJUzMYfrPi9E2kiaOTuFzGLkOKX5qnVBZZGYube4soOV6c18uz83UFBDs_3sYp89GrakH5jvwMHqV4e1qBv6p2BCXPoVYW6rUJjAAyQM9wN2h8jfkZtYTtV6KGeTj4EaAHr2fQacZFN77IIzRTL8flRLgDKns3QMdrbky43bvCRvjd_4rKCJ9onbDixw',
@@ -116,9 +134,10 @@ class App extends Component {
       var alg = 'RS256'
       var kty = 'RSA'
       var typ = 'JWT'
-//      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/jku-test.json'
-      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, pubJwk, null)
-      fd(JSON.stringify(signedAudit), 'signedAudit.json')
+      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/some-other-jku-not-trusted.json'
+      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, null, jku)
+//      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, pubJwk, null)
+      fd(JSON.stringify(signedAudit), 'signedAuditJkuValidNotTrusted.json')
     }
   }
 
@@ -132,15 +151,23 @@ class App extends Component {
   }
 
   render() {
-
-    var auditTarget;
+    var verifyAuditText;
     var verifyState = this.state.verifyStatus;
     if (verifyState === null) {
-      auditTarget = "audit-target"
+      verifyAuditText = <div>Drag a signed audit here!</div>
     } else if (verifyState === true) {
-      auditTarget = "audit-valid"
+      verifyAuditText = <div
+        className='audit-valid-text'>{this.state.signedAudit.filename + ' is valid!'}</div>
     } else if (verifyState === false) {
-      auditTarget = "audit-invalid"
+      verifyAuditText = <div>
+        <div
+          className='audit-invalid-text'>
+          {this.state.signedAudit.filename + ' is invalid!'}
+          <br/>
+          <br/>
+          Error: {this.state.error}
+        </div>
+      </div>
     }
     return (
       <div className="App">
@@ -153,25 +180,20 @@ class App extends Component {
         </div>
         <div className="App-content">
            <div className="App-sign">
-            <h3>Sign an audit</h3>
-            <div className="audit-target">
-              Drag an audit here!
-              <FileDrop 
-                frame={document.createElement('div')}
-                onDrop={(evt) => {this.unsignedAuditDropped(evt)}}
-              />
-            </div>
+            <h3>Sign an audit...</h3>
+            <Dropzone
+              className='dropzone'
+              onDrop={(evt) => {this.unsignedAuditDropped(evt)}}>
+              <div>Drag an audit here!</div>
+            </Dropzone>
           </div>
           <div className="App-verify">
-            <h3>Verify a signed audit</h3>
-            <div className={auditTarget}>
-              Drag a signed audit here!
-              <FileDrop 
-                className='signed-targ'
-                frame={document.createElement("div")} 
-                onDrop={(evt) => {this.signedAuditDropped(evt)}}
-              />
-            </div>
+            <h3>Verify a signed audit...</h3>
+            <Dropzone
+              className='dropzone'
+              onDrop={(evt) => {this.signedAuditDropped(evt)}}>
+              {verifyAuditText}
+            </Dropzone>
           </div>
         </div>
       </div>
