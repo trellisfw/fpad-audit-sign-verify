@@ -134,10 +134,10 @@ class App extends Component {
       var alg = 'RS256'
       var kty = 'RSA'
       var typ = 'JWT'
-      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/some-other-jku-not-trusted.json'
-      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, null, jku)
-//      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, pubJwk, null)
-      fd(JSON.stringify(signedAudit), 'signedAuditJkuValidNotTrusted.json')
+//      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/some-other-jku-not-trusted.json'
+//      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, null, jku)
+      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, pubJwk, null)
+      fd(JSON.stringify(signedAudit), 'signedAuditJWK.json')
     }
   }
 
