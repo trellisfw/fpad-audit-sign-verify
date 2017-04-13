@@ -13,29 +13,6 @@ class App extends Component {
     this.setState({verifyStatus:null});
   }
 
-  serialize(obj) {
-  if (typeof obj === 'number') throw new Error('You cannot serialize a number with a hashing function and expect it to work.  Use a string.');
-  if (typeof obj === 'string') return '"'+obj+'"';
-  if (typeof obj === 'boolean') return (obj ? 'true' : 'false');
-  // Must be an array or object
-  var isarray = _.isArray(obj);
-  var starttoken = isarray ? '[' : '{';
-  var   endtoken = isarray ? ']' : '}';
-
-  if (!obj) return 'null';
-
-  const keys = _.keys(obj).sort(); // you can't have two identical keys, so you don't have to worry about that.
-
-  return starttoken
-    + _.reduce(keys, (acc,k,index) => {
-      if (!isarray) acc += '"'+k+'":'; // if an object, put the key name here
-      acc += this.serialize(obj[k]);
-      if (index < keys.length-1) acc += ',';
-      return acc;
-    },"")
-    + endtoken;
-  }
-
   unsignedAuditDropped(filelist, e) {
     var reader = new FileReader();
     var file = filelist[0];
@@ -130,13 +107,15 @@ class App extends Component {
        dq: 'ZjILMhuKxigaR4l0t1fM-aqksgUj_MxeMi09Hu53EppsfaeD9H5_Cs2g2nYt2C-5ifHZDsh4u1V3EIEQqgXkfyy05sYbSM7xaYGxof9-NObZfDStzOugrnXODxBbM2nD-7kdAmPYo8chQ4YQjLi5d0207p--a9i76SpepCfvrLE',
        qi: 'YlE9wO5yPCG12gp76BeivZtK4y-E6HO--o3s2uNs1nbXcBHzdoPOp0hfwI3FlIn3WHlLiy1uJ0pH1Nel8WJBs4E1IDUAFx1PLFNzWGC2JhhztFjXc5LFIo-JySJXElzJ5DhvRdQawKtSqtVuANKgg3CBSmadtH82OBdtaKv9mkQ'
       }
+
       var kid = 'DemoSite'
       var alg = 'RS256'
       var kty = 'RSA'
       var typ = 'JWT'
-//      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/some-other-jku-not-trusted.json'
-//      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, null, jku)
-      var signedAudit = gv.generate(this.state.inputAudit.audit, kid, alg, kty, typ, prvJwk, pubJwk, null)
+      var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/some-other-jku-not-trusted.json'
+
+      var headers = { kid, alg, kty, typ, jwk:pubJwk, jku }
+      var signedAudit = gv.generate(this.state.inputAudit.audit, prvJwk, headers)
       fd(JSON.stringify(signedAudit), 'signedAuditJWK.json')
     }
   }

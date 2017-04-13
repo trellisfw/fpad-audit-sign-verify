@@ -50,7 +50,7 @@ dropzone {
 }
 a {
   text-decoration: underline;
-/ cursor: pointer;
+  cursor: pointer;
 }
 .audit-valid {
   display: flex;
