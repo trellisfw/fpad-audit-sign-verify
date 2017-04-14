@@ -3,8 +3,8 @@ import './App.css'
 import Dropzone from 'react-dropzone'
 import _ from 'lodash';
 import fd from 'react-file-download'
-import gv from '../generateVerify'
-var Promise = require('bluebird').Promise; 
+import fsig from '../fpad-signatures.js'
+var Promise = require('bluebird'); 
 var agent = require('superagent-promise')(require('superagent'), Promise);
 
 class App extends Component {
@@ -59,9 +59,14 @@ class App extends Component {
         this.setState({signedAudit: {filename: file.name, audit: null}});
         this.setError('File is not parsable JSON.');
       } else {
-        if (data.signatures) {
-          this.setState({signedAudit: {filename: file.name, audit: data}});
-          this.verifyAudit();
+        if (data.fulfillmentValue) {
+          if (data.fulfillmentValue.signatures) {
+            this.setState({signedAudit: {filename: file.name, audit: data.fulfillmentValue}});
+            this.verifyAudit();
+          } else {
+            this.setState({signedAudit: {filename: file.name, audit: null}});
+            this.setError('Audit has no signatures.')
+          }
         } else {
           this.setState({signedAudit: {filename: file.name, audit: null}});
           this.setError('Audit has no signatures.')
@@ -74,7 +79,7 @@ class App extends Component {
   verifyAudit() {
     var self = this;
     if (this.state.signedAudit) { //Audit file present.
-      gv.verify(this.state.signedAudit.audit)
+      fsig.verify(this.state.signedAudit.audit)
       .then(function(res) {
         self.setState({verifyStatus:res})
         setTimeout(() => { 
@@ -82,8 +87,9 @@ class App extends Component {
         }, 10000);
       })
       .catch((err) => {
+        console.log(err);
         self.setState({verifyStatus:false})
-        this.setState({error: err})
+        this.setState({error: err.message})
       })
     }
   }
@@ -115,7 +121,7 @@ class App extends Component {
       var jku = 'https://raw.githubusercontent.com/fpad/trusted-list/master/jku-test/some-other-jku-not-trusted.json'
 
       var headers = { kid, alg, kty, typ, jwk:pubJwk, jku }
-      var signedAudit = gv.generate(this.state.inputAudit.audit, prvJwk, headers)
+      var signedAudit = fsig.generate(this.state.inputAudit.audit, prvJwk, headers)
       fd(JSON.stringify(signedAudit), 'signedAuditJWK.json')
     }
   }
